@@ -94,12 +94,13 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, lo
 }
 
 
-void requestServeStatic(int fd, char *filename, int filesize, long arrival, long dispatch) 
+void requestServeStatic(int fd, char *filename, int filesize, long arrival, long dispatch, long start, long count) 
 {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
   struct timeval beforeread, afterread;
   int read, complete;
+  double throughput;
 
   gettimeofday(&beforeread, NULL);
 
@@ -122,7 +123,12 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   sprintf(buf, "%sServer: My Web Server\r\n", buf);
 
   // Your statistics go here -- fill in the 0's with something useful!
-  sprintf(buf, "%s Stat-req-arrival: %ld\r\n", buf, arrival);
+  sprintf(buf, "%sStat-req-arrival: %ld\r\n", buf, arrival);
+  throughput = (double)(count + 1) / (arrival - start);
+  sprintf(buf, "%sthroughput: %lf\r\n", buf, throughput);
+  sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, count);
+  sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, arrival - start);
+  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, dispatch + (complete - read) - start);
   // Add additional statistic information here like above
   // ...
   //
@@ -139,7 +145,7 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
 }
 
 // handle a request
-void requestHandle(int fd, long arrival, long dispatch)
+void requestHandle(int fd, long arrival, long dispatch, long start, long count)
 {
 
   int is_static;
@@ -171,7 +177,7 @@ void requestHandle(int fd, long arrival, long dispatch)
       requestError(fd, filename, "403", "Forbidden", "My Server could not read this file");
       return;
     }
-    requestServeStatic(fd, filename, sbuf.st_size, arrival, dispatch);
+    requestServeStatic(fd, filename, sbuf.st_size, arrival, dispatch, start, count);
   } else {
     if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
       requestError(fd, filename, "403", "Forbidden", "My Server could not run this CGI program");

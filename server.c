@@ -14,6 +14,7 @@
 typedef struct {
   int fd;
   long size, arrival, dispatch;
+  long start, count;
 } request;
 
 enum {FIFO, HPSC, HPDC};
@@ -37,7 +38,7 @@ void consumer(request *req) {
 
   gettimeofday(&dispatch, NULL);
   req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;
-  requestHandle(req->fd, req->arrival, req->dispatch);
+  requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count++);
   Close(req->fd);
 }
 
@@ -51,6 +52,9 @@ int main(int argc, char *argv[])
   getargs(&port, &threads, &buffers, &alg, argc, argv);
 
   listenfd = Open_listenfd(port);
+  req.count = 0;
+  gettimeofday(&arrival, NULL);
+  req.start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;
   while (1) {
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
