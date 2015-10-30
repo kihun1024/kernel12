@@ -1,6 +1,6 @@
 /*
  * client.c: A very, very primitive HTTP client.
- * 
+ * aaa
  * To run, try: 
  *      client pintos.kumoh.ac.kr 80 /~choety/
  *
