@@ -18,9 +18,10 @@
 #include <semaphore.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h> 
 //barrier 사용하기위한 전역변수
 pthread_barrier_t barrier;
-
+long first , last;
 typedef struct data_struct{
 	char * host;
 	int port;
@@ -87,6 +88,8 @@ void clientPrint(int fd)
 
 /* CONCUR 방법 스레드 함수*/
 void * concur_thread(void * data){
+	struct timeval start , end;
+	long startTime, endTime;
 	int res;
 	int clientfd;
 	int i;
@@ -98,15 +101,27 @@ void * concur_thread(void * data){
 		res = pthread_barrier_wait(&barrier);
 		printf("forM = %d threadN  = %d \n",i , pthread_self());
 		clientfd = Open_clientfd(ds->host,ds->port);
+		gettimeofday(&start,NULL);
 		clientSend(clientfd,ds->filename);
 		clientPrint(clientfd);
+		gettimeofday(&end,NULL);
 		Close(clientfd);
+
+		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
+		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
+		if(first == 0){
+			first = endTime-startTime;
+		}
+
+		last = endTime - startTime;
 	}
 }
 
 /* fifo 에서 사용하는 스레드 함수*/
 void * fifo_thread(void *data){
 	int clientfd;
+	long startTime, endTime;
+	struct timeval start , end;
 	int i;
 	data_struct * ds = (data_struct*)data;
 	for(i = 0 ; i< ds->m ; i++){
@@ -114,6 +129,7 @@ void * fifo_thread(void *data){
 		sem_wait(&semList[ds->iNumber]);
 		printf(" ForM = %d threadN = %d\n",i,ds->iNumber);
 		clientfd = Open_clientfd(ds->host,ds->port);
+		gettimeofday(&start,NULL);
 		clientSend(clientfd,ds->filename);
 		sem_post(&semList[((ds->iNumber)+1)%ds->n]);
 		
@@ -121,24 +137,50 @@ void * fifo_thread(void *data){
 		
 		// 요청에의한 응답부분 
 		clientPrint(clientfd);
+		gettimeofday(&end,NULL);
 		Close(clientfd);
+
+
+		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
+		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
+		if(first == 0){
+			first = endTime-startTime;
+		}
+
+		last = endTime - startTime;
+
 		pthread_barrier_wait(&barrier);
+
+
 	}
 }
 
 /* random 에서 사용하는 스레드 함수*/
 void * random_thread(void *data){
 	int clientfd;
+	long startTime, endTime;
+	struct timeval start,end;
 	int i;
 	data_struct * ds = (data_struct*)data;
 	
 	for(i=0; i<ds->m; i++)
 	{
 		clientfd = Open_clientfd(ds->host,ds->port);
+		gettimeofday(&start,NULL);
 		clientSend(clientfd,ds->filename);
 		clientPrint(clientfd);
+		gettimeofday(&end,NULL);
 		sleep((rand()%5)+1); // 1 < t < 5
 		Close(clientfd);
+
+
+		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
+		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
+		if(first == 0){
+			first = endTime-startTime;
+		}
+
+		last = endTime - startTime;
 	}
 }
 
@@ -219,5 +261,7 @@ int main(int argc, char *argv[])
 
   client(host, port, threadN, forM, schedalg, filename);
 
+
+  printf("first : %ld   , last : %ld \n",first,last);
   exit(0);
 }
