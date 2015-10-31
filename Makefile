@@ -18,7 +18,7 @@ server: server.o request.o stems.o
 	$(CC) $(CFLAGS) -o server server.o request.o stems.o $(LIBS)
 
 client: client.o stems.o
-	$(CC) $(CFLAGS) -o client client.o stems.o
+	$(CC) $(CFLAGS) -o client client.o stems.o $(LIBS)
 
 output.cgi: output.c
 	$(CC) $(CFLAGS) -o output.cgi output.c
