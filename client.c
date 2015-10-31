@@ -14,10 +14,10 @@
  */
 
 #include "stems.h"
-#include "pthread.h"
-#include "semaphore.h"
-#include "string.h"
-
+#include <pthread.h>
+#include <semaphore.h>
+#include <string.h>
+#include <stdlib.h>
 //barrier 사용하기위한 전역변수
 pthread_barrier_t barrier;
 
@@ -26,11 +26,14 @@ typedef struct data_struct{
 	int port;
 	char *filename;
 	int m;
+	int iNumber;
+	int n;
 }data_struct;
 
 
 //FIFO 에서 사용하는 세마폴 변수
 sem_t sem;
+sem_t * semList;
 
 /*
  * Send an HTTP request for the specified file 
@@ -93,7 +96,7 @@ void * concur_thread(void * data){
 	{
 		//barrier_wait 스레드 다 생성 될때까지 대기
 		res = pthread_barrier_wait(&barrier);
-
+		printf("forM = %d threadN  = %d \n",i , pthread_self());
 		clientfd = Open_clientfd(ds->host,ds->port);
 		clientSend(clientfd,ds->filename);
 		clientPrint(clientfd);
@@ -106,18 +109,20 @@ void * fifo_thread(void *data){
 	int clientfd;
 	int i;
 	data_struct * ds = (data_struct*)data;
-
-	for(i=0; i<ds->m; i++)
-	{
+	for(i = 0 ; i< ds->m ; i++){
 		//세마폴 사용 부분 fd 생성 및 요청 부분
-		sem_wait(&sem);
+		sem_wait(&semList[ds->iNumber]);
+		printf(" ForM = %d threadN = %d\n",i,ds->iNumber);
 		clientfd = Open_clientfd(ds->host,ds->port);
 		clientSend(clientfd,ds->filename);
-		sem_post(&sem);
+		sem_post(&semList[((ds->iNumber)+1)%ds->n]);
+		
 
+		
 		// 요청에의한 응답부분 
 		clientPrint(clientfd);
 		Close(clientfd);
+		pthread_barrier_wait(&barrier);
 	}
 }
 
@@ -126,13 +131,13 @@ void * random_thread(void *data){
 	int clientfd;
 	int i;
 	data_struct * ds = (data_struct*)data;
-
+	
 	for(i=0; i<ds->m; i++)
 	{
 		clientfd = Open_clientfd(ds->host,ds->port);
 		clientSend(clientfd,ds->filename);
 		clientPrint(clientfd);
-		sleep(1); // 1 < t < 5
+		sleep((rand()%5)+1); // 1 < t < 5
 		Close(clientfd);
 	}
 }
@@ -142,13 +147,14 @@ void * random_thread(void *data){
 /* RANDOM 사용 함수 */
 void client(char *host, int port, int threadN, int forM, char * sched, char * filename){
 	pthread_t threads[threadN];
-	int i;
+	int i,j;
 	void * status;
 	data_struct  ds;
 	ds.filename = filename;
 	ds.port = port;
 	ds.host = host;
 	ds.m = forM;
+	data_struct *dataList;
 
 	if(!strcmp(sched, "CONCUR")){
 		pthread_barrier_init(&barrier,NULL,threadN);
@@ -158,10 +164,24 @@ void client(char *host, int port, int threadN, int forM, char * sched, char * fi
 		}
 	}
 	else if(!strcmp(sched, "FIFO")){
-		sem_init(&sem,0,1); //세마폴 init 함수
+		//sem_init(&sem,0,1); //세마폴 init 함수
+		pthread_barrier_init(&barrier,NULL,threadN);
+		semList = (sem_t*)malloc(sizeof(sem_t)*threadN);
+		sem_init(&semList[0],0,1);
+		
+		dataList = (data_struct*)malloc(sizeof(data_struct)*threadN);
+		for(i = 1 ; i < threadN ; i++){
+			sem_init(&semList[i],0,0);
+		}
 
 		for(i = 0; i < threadN; i++){
-			pthread_create(&threads[i],NULL,fifo_thread,(void*)&ds);
+			dataList[i].filename = filename;
+			dataList[i].port = port;
+			dataList[i].host = host;
+			dataList[i].m = forM;
+			dataList[i].iNumber = i;
+			dataList[i].n = threadN;
+			pthread_create(&threads[i],NULL,fifo_thread,(void*)&dataList[i]);
 		}
 	}
 	else if(!strcmp(sched, "RANDOM")){

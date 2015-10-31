@@ -5,6 +5,9 @@
 #include "stems.h"
 #include "request.h"
 
+
+long completeTotal =0;
+
 void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg) 
 {
   char buf[MAXLINE], body[MAXBUF];
@@ -117,18 +120,19 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
 
   read = ((afterread.tv_sec - beforeread.tv_sec) * 1000 + (afterread.tv_usec - beforeread.tv_usec)/1000.0) + 0.5;
   complete = (((afterread.tv_sec) * 1000 + (afterread.tv_usec)/1000.0) + 0.5) - arrival;
-
+  completeTotal += complete;
   // put together response
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: My Web Server\r\n", buf);
 
   // Your statistics go here -- fill in the 0's with something useful!
   sprintf(buf, "%sStat-req-arrival: %ld\r\n", buf, arrival);
-  throughput = (double)(count + 1) / (arrival - start);
+  throughput = (double)(count + 1)/completeTotal;
   sprintf(buf, "%sthroughput: %lf\r\n", buf, throughput);
   sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, count);
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, arrival - start);
   sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, dispatch + complete - start);
+  sprintf(buf, "%sStart_req_complete_total : %ld\r\n",buf,completeTotal);
   // Add additional statistic information here like above
   // ...
   //
