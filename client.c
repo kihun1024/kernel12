@@ -101,31 +101,6 @@ void * concur_thread(void * data){
 	}
 }
 
-/*CONCUR 방법 사용 함수 N개 thread 생성, 동시에 같은 파일에 대해 하나씩 요청 보냄*/
-void concur(char * filename, int threadN, int forM, int port, char * host){
-	int i;
-	void *status;
-
-	pthread_t threads[threadN];
-	//barrier init  함수
-	pthread_barrier_init(&barrier,NULL,threadN);
-
-	data_struct ds;
-	ds.filename = filename;
-	ds.port = port;
-	ds.host =host;
-	ds.m = forM;
-
-	for(i = 0 ; i < threadN; i++){
-		pthread_create(&threads[i],NULL,concur_thread,(void*)&ds);
-	}
-
-
-	for(i =0 ; i <threadN ;i++){
-		pthread_join(threads[i],&status);
-	}
-}
-
 /* fifo 에서 사용하는 스레드 함수*/
 void * fifo_thread(void *data){
 	int clientfd;
@@ -146,31 +121,6 @@ void * fifo_thread(void *data){
 	}
 }
 
-/* FIFO 사용 함수 */
-void fifo(char * filename,int threadN, int forM, int port, char *host){
-	pthread_t threads[threadN];
-	int i;
-	void * status;
-	data_struct  ds;
-	ds.filename = filename;
-	ds.port = port;
-	ds.host = host;
-	ds.m = forM;
-
-	//세마폴 init 함수
-	sem_init(&sem,0,1);
-
-	for(i = 0; i < threadN; i++){
-		pthread_create(&threads[i],NULL,fifo_thread,(void*)&ds);
-	}
-
-
-	for(i = 0 ; i < threadN; i++){
-		pthread_join(threads[i],&status);
-	}
-}
-
-
 /* random 에서 사용하는 스레드 함수*/
 void * random_thread(void *data){
 	int clientfd;
@@ -182,13 +132,15 @@ void * random_thread(void *data){
 		clientfd = Open_clientfd(ds->host,ds->port);
 		clientSend(clientfd,ds->filename);
 		clientPrint(clientfd);
-		sleep(1);
+		sleep(1); // 1 < t < 5
 		Close(clientfd);
 	}
 }
 
+
+
 /* RANDOM 사용 함수 */
-void randomf(char * filename,int threadN, int forM, int port, char *host){
+void client(char *host, int port, int threadN, int forM, char * sched, char * filename){
 	pthread_t threads[threadN];
 	int i;
 	void * status;
@@ -198,16 +150,30 @@ void randomf(char * filename,int threadN, int forM, int port, char *host){
 	ds.host = host;
 	ds.m = forM;
 
-	for(i = 0; i < threadN; i++){
-		pthread_create(&threads[i],NULL,random_thread,(void*)&ds);
-	}
+	if(!strcmp(sched, "CONCUR")){
+		pthread_barrier_init(&barrier,NULL,threadN);
 
+		for(i = 0 ; i < threadN; i++){
+			pthread_create(&threads[i],NULL,concur_thread,(void*)&ds);
+		}
+	}
+	else if(!strcmp(sched, "FIFO")){
+		sem_init(&sem,0,1); //세마폴 init 함수
+
+		for(i = 0; i < threadN; i++){
+			pthread_create(&threads[i],NULL,fifo_thread,(void*)&ds);
+		}
+	}
+	else if(!strcmp(sched, "RANDOM")){
+		for(i = 0; i < threadN; i++){
+			pthread_create(&threads[i],NULL,random_thread,(void*)&ds);
+		}
+	}
 
 	for(i = 0 ; i < threadN; i++){
 		pthread_join(threads[i],&status);
 	}
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -229,20 +195,9 @@ int main(int argc, char *argv[])
   forM = atoi(argv[4]);
   schedalg = argv[5];
   filename = argv[6];
-  printf("schedalg : %s\n",schedalg);
-  if(!strcmp(schedalg, "CONCUR") ){concur(filename,threadN,forM,port,host);}
-  else if(!strcmp(schedalg,"FIFO")){fifo(filename,threadN,forM,port,host);}
-  else if(!strcmp(schedalg,"RANDOM")){randomf(filename,threadN,forM,port,host);}
- 
+//  printf("schedalg : %s\n",schedalg);
 
-  /* Open a single connection to the specified host and port */
-  /*
-  clientfd = Open_clientfd(host, port);
-  
-  clientSend(clientfd, filename);
-  clientPrint(clientfd);
-    
-  Close(clientfd);
-  */
+  client(host, port, threadN, forM, schedalg, filename);
+
   exit(0);
 }

@@ -128,7 +128,7 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   sprintf(buf, "%sthroughput: %lf\r\n", buf, throughput);
   sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, count);
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, arrival - start);
-  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, dispatch + (complete - read) - start);
+  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, dispatch + complete - start);
   // Add additional statistic information here like above
   // ...
   //
