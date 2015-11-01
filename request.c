@@ -5,8 +5,18 @@
 #include "stems.h"
 #include "request.h"
 
+#define MAX_REQUEST 100000
+
+typedef struct request_struct{
+	long stat_req_arrival_time;
+	long stat_req_arrival_count;
+	long stat_req_complete_time;
+	double throughput;
+}request_struct;
 
 long completeTotal =0;
+request_struct reqList[MAX_REQUEST];
+int reqListCount =0;
 
 void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg) 
 {
@@ -103,7 +113,7 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
   struct timeval beforeread, afterread;
   int read, complete;
-  double throughput;
+//  double throughput;
 
   gettimeofday(&beforeread, NULL);
 
@@ -124,15 +134,21 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   // put together response
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: My Web Server\r\n", buf);
+ 
+  reqList[reqListCount].throughput = (double)(count+1)/completeTotal;
+  reqList[reqListCount].stat_req_arrival_count = count;
+  reqList[reqListCount].stat_req_arrival_time = arrival - start;
+  reqList[reqListCount].stat_req_complete_time = dispatch + complete - start;
 
   // Your statistics go here -- fill in the 0's with something useful!
   sprintf(buf, "%sStat-req-arrival: %ld\r\n", buf, arrival);
-  throughput = (double)(count + 1)/completeTotal;
-  sprintf(buf, "%sthroughput: %lf\r\n", buf, throughput);
-  sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, count);
-  sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, arrival - start);
-  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, dispatch + complete - start);
-  sprintf(buf, "%sStart_req_complete_total : %ld\r\n",buf,completeTotal);
+  sprintf(buf, "%sthroughput: %lf\r\n", buf, reqList[reqListCount].throughput);
+  sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_count);
+  sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_time);
+  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time);
+  reqListCount++;
+
+
   // Add additional statistic information here like above
   // ...
   //
