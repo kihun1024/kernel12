@@ -7,13 +7,6 @@
 
 #define MAX_REQUEST 100000
 
-typedef struct request_struct{
-	long stat_req_arrival_time;
-	long stat_req_arrival_count;
-	long stat_req_complete_time;
-	double throughput;
-}request_struct;
-
 long completeTotal =0;
 request_struct reqList[MAX_REQUEST];
 int reqListCount =0;
@@ -113,7 +106,6 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
   struct timeval beforeread, afterread;
   int read, complete;
-//  double throughput;
 
   gettimeofday(&beforeread, NULL);
 
