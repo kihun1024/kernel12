@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
 
 
   if (argc != 7) {
-    fprintf(stderr, "Usage: %s <host> <port> <N> <M> <schedalg> <filename>\n", argv[0]);
+    fprintf(stderr, "Usage: %s [host] [portnum] [N] [M] [schedalg] [filename1] <filename2>\n", argv[0]);
     exit(1);
   }
 
@@ -257,7 +257,6 @@ int main(int argc, char *argv[])
   forM = atoi(argv[4]);
   schedalg = argv[5];
   filename = argv[6];
-//  printf("schedalg : %s\n",schedalg);
 
   client(host, port, threadN, forM, schedalg, filename);
 

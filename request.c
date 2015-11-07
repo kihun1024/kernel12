@@ -67,11 +67,29 @@ void requestReadhdrs(rio_t *rp)
 //
 int parseURI(char *uri, char *filename, char *cgiargs) 
 {
+  char *cgi = strstr(uri, ".cgi");
   strcpy(cgiargs, "");
-  sprintf(filename, ".%s", uri);
-  if (uri[strlen(uri)-1] == '/') 
-    strcat(filename, "index.html");
-  return 1;
+  
+  if(cgi == NULL)
+  {
+    printf("static");
+    sprintf(filename, ".%s", uri);
+    if (uri[strlen(uri)-1] == '/') 
+      strcat(filename, "index.html");
+    return 1;
+  }
+  else
+  {
+    printf("dynamic");
+    cgi = strchr(cgi, '?');
+    if(cgi)
+    {
+      strcpy(cgiargs, cgi+1);
+      *cgi = '\0';
+    }
+    sprintf(filename, ".%s", uri);
+    return 0;
+  }
 }
 
 //
@@ -94,9 +112,20 @@ void requestGetFiletype(char *filename, char *filetype)
 //
 void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, long dispatch)
 {
-  //
-  // ...
-  //
+  char buf[MAXLINE];
+
+  sprintf(buf, "HTTP/1.0 200 OK\r\n");
+  sprintf(buf, "%sServer: My Web Server\r\n", buf);
+
+  Rio_writen(fd, buf, strlen(buf));
+
+  if (Fork() == 0)
+  {
+    Setenv("QUERY_STRING", cgiargs, 1);
+    Dup2(fd, STDOUT_FILENO);
+    Execve(filename, NULL, environ);
+  }
+  Wait(NULL);
 }
 
 
@@ -198,5 +227,3 @@ void requestHandle(int fd, long arrival, long dispatch, long start, long count)
     requestServeDynamic(fd, filename, cgiargs, arrival, dispatch);
   }
 }
-
-
