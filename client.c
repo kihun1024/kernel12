@@ -21,7 +21,8 @@
 #include <sys/time.h> 
 //barrier 사용하기위한 전역변수
 pthread_barrier_t barrier;
-long first, last;
+sem_t sem_time;
+long  last;
 int tcount, modcount = 1;
 typedef struct data_struct{
 	char * host;
@@ -109,11 +110,10 @@ void * concur_thread(void * data){
 		Close(clientfd);
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
-		if(first == 0){
-			first = endTime-startTime;
-		}
-
-		last = endTime - startTime;
+	
+		sem_wait(&sem_time);
+		last += endTime - startTime;
+		sem_post(&sem_time);
 	}
 }
 
@@ -143,11 +143,10 @@ void * fifo_thread(void *data){
 
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
-		if(first == 0){
-			first = endTime-startTime;
-		}
-
-		last = endTime - startTime;
+	
+		sem_wait(&sem_time);
+		last += endTime - startTime;
+		sem_post(&sem_time);
 
 		pthread_barrier_wait(&barrier);
 
@@ -170,17 +169,16 @@ void * random_thread(void *data){
 		clientSend(clientfd,ds->filename[tcount++%modcount]);
 		clientPrint(clientfd);
 		gettimeofday(&end,NULL);
-		sleep((rand()%5)+1); // 1 < t < 5
 		Close(clientfd);
 
 
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
-		if(first == 0){
-			first = endTime-startTime;
-		}
-
-		last = endTime - startTime;
+	
+		sem_wait(&sem_time);
+		last += endTime - startTime;
+		sem_post(&sem_time);
+		sleep((rand() % 5) + 1);
 	}
 }
 
@@ -263,7 +261,7 @@ int main(int argc, char *argv[])
     modcount = 2;
     filename[1] = argv[7];
   }
-
+  sem_init(&sem_time, 0, 1);
   client(host, port, threadN, forM, schedalg, filename);
 
 
