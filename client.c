@@ -21,11 +21,12 @@
 #include <sys/time.h> 
 //barrier 사용하기위한 전역변수
 pthread_barrier_t barrier;
-long first , last;
+long first, last;
+int tcount, modcount = 1;
 typedef struct data_struct{
 	char * host;
 	int port;
-	char *filename;
+	char *filename[2];
 	int m;
 	int iNumber;
 	int n;
@@ -99,10 +100,10 @@ void * concur_thread(void * data){
 	{
 		//barrier_wait 스레드 다 생성 될때까지 대기
 		res = pthread_barrier_wait(&barrier);
-		printf("forM = %d threadN  = %d \n",i , pthread_self());
+//		printf("forM = %d threadN  = %d \n",i , pthread_self());
 		clientfd = Open_clientfd(ds->host,ds->port);
 		gettimeofday(&start,NULL);
-		clientSend(clientfd,ds->filename);
+		clientSend(clientfd,ds->filename[tcount++%modcount]);
 		clientPrint(clientfd);
 		gettimeofday(&end,NULL);
 		Close(clientfd);
@@ -126,10 +127,10 @@ void * fifo_thread(void *data){
 	for(i = 0 ; i< ds->m ; i++){
 		//세마폴 사용 부분 fd 생성 및 요청 부분
 		sem_wait(&semList[ds->iNumber]);
-		printf(" ForM = %d threadN = %d\n",i,ds->iNumber);
+//		printf(" ForM = %d threadN = %d\n",i,ds->iNumber);
 		clientfd = Open_clientfd(ds->host,ds->port);
 		gettimeofday(&start,NULL);
-		clientSend(clientfd,ds->filename);
+		clientSend(clientfd,ds->filename[tcount++%modcount]);
 		sem_post(&semList[((ds->iNumber)+1)%ds->n]);
 		
 
@@ -166,7 +167,7 @@ void * random_thread(void *data){
 	{
 		clientfd = Open_clientfd(ds->host,ds->port);
 		gettimeofday(&start,NULL);
-		clientSend(clientfd,ds->filename);
+		clientSend(clientfd,ds->filename[tcount++%modcount]);
 		clientPrint(clientfd);
 		gettimeofday(&end,NULL);
 		sleep((rand()%5)+1); // 1 < t < 5
@@ -186,12 +187,13 @@ void * random_thread(void *data){
 
 
 /* RANDOM 사용 함수 */
-void client(char *host, int port, int threadN, int forM, char * sched, char * filename){
+void client(char *host, int port, int threadN, int forM, char * sched, char * filename[2]){
 	pthread_t threads[threadN];
-	int i,j;
+	int i;
 	void * status;
 	data_struct  ds;
-	ds.filename = filename;
+	ds.filename[0] = filename[0];
+	ds.filename[1] = filename[1];
 	ds.port = port;
 	ds.host = host;
 	ds.m = forM;
@@ -216,7 +218,8 @@ void client(char *host, int port, int threadN, int forM, char * sched, char * fi
 		}
 
 		for(i = 0; i < threadN; i++){
-			dataList[i].filename = filename;
+			dataList[i].filename[0] = filename[0];
+			dataList[i].filename[1] = filename[1];
 			dataList[i].port = port;
 			dataList[i].host = host;
 			dataList[i].m = forM;
@@ -238,14 +241,13 @@ void client(char *host, int port, int threadN, int forM, char * sched, char * fi
 
 int main(int argc, char *argv[])
 {
-  char *host, *filename;
+  char *host, *filename[2];
   int port;
-  int clientfd;
   int threadN, forM;
   char * schedalg;
 
 
-  if (argc != 7) {
+  if (argc != 7 && argc != 8) {
     fprintf(stderr, "Usage: %s [host] [portnum] [N] [M] [schedalg] [filename1] <filename2>\n", argv[0]);
     exit(1);
   }
@@ -255,7 +257,12 @@ int main(int argc, char *argv[])
   threadN = atoi(argv[3]);
   forM = atoi(argv[4]);
   schedalg = argv[5];
-  filename = argv[6];
+  filename[0] = argv[6];
+  if (argc == 8)
+  {
+    modcount = 2;
+    filename[1] = argv[7];
+  }
 
   client(host, port, threadN, forM, schedalg, filename);
 

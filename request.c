@@ -71,7 +71,7 @@ int parseURI(char *uri, char *filename, char *cgiargs)
   
   if(cgi == NULL)
   {
-    printf("static");
+//    printf("static");
     sprintf(filename, ".%s", uri);
     if (uri[strlen(uri)-1] == '/') 
       strcat(filename, "index.html");
@@ -79,7 +79,7 @@ int parseURI(char *uri, char *filename, char *cgiargs)
   }
   else
   {
-    printf("dynamic");
+//    printf("dynamic");
     cgi = strchr(cgi, '?');
     if(cgi)
     {

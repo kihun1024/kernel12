@@ -23,7 +23,6 @@ enum {FIFO, HPSC, HPDC};
 
 sem_t sem;
 sem_t sem_req;
-sem_t sem_file;
 request **buffer;
 
 void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *argv[])
@@ -46,7 +45,7 @@ void consumer(void * data) {
 
   
   while(1){
-  printf("wait consumer\n");
+//  printf("wait consumer\n");
 
   //request wait;
   sem_wait(&sem);
@@ -57,14 +56,14 @@ void consumer(void * data) {
   req->fd = reqTemp->fd;
   req->size = reqTemp->size;
   req->start = reqTemp->start;
-  req->count = reqTemp->count;
+  req->count = reqTemp->count++;
   req->arrival = reqTemp->arrival;
   sem_post(&sem_req);
 
   gettimeofday(&dispatch, NULL);
   req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;
 
-  requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count++);
+  requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count);
   Close(req->fd);
   }
 }
@@ -90,7 +89,6 @@ int main(int argc, char *argv[])
 //  thread 생성
   sem_init(&sem,0,0);
   sem_init(&sem_req,0,0);
-  sem_init(&sem_file,0,1);
 
   for(i = 0 ; i < threads ;i++){
     thread = (pthread_t*)malloc(sizeof(pthread_t));
