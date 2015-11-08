@@ -50,7 +50,6 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
 void requestReadhdrs(rio_t *rp)
 {
   char buf[MAXLINE];
-
   Rio_readlineb(rp, buf, MAXLINE);
   while (strcmp(buf, "\r\n")) {
     Rio_readlineb(rp, buf, MAXLINE);
@@ -139,9 +138,7 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   gettimeofday(&beforeread, NULL);
 
   requestGetFiletype(filename, filetype);
-
   srcfd = Open(filename, O_RDONLY, 0);
-
   // Rather than call read() to read the file into memory, 
   // which would require that we allocate a buffer, we memory-map the file
   srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
@@ -182,7 +179,6 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   //  Writes out to the client socket the memory-mapped file 
   Rio_writen(fd, srcp, filesize);
   Munmap(srcp, filesize);
-
 }
 
 // handle a request
@@ -193,10 +189,10 @@ void requestHandle(int fd, long arrival, long dispatch, long start, long count)
   struct stat sbuf;
   char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
   char filename[MAXLINE], cgiargs[MAXLINE];
-  rio_t rio;
-
-  Rio_readinitb(&rio, fd);
-  Rio_readlineb(&rio, buf, MAXLINE);
+  rio_t * rio;
+  rio = (rio_t*)malloc(sizeof(rio_t));
+  Rio_readinitb(rio, fd);
+  Rio_readlineb(rio, buf, MAXLINE);
   sscanf(buf, "%s %s %s", method, uri, version);
 
   printf("%s %s %s\n", method, uri, version);
@@ -205,7 +201,7 @@ void requestHandle(int fd, long arrival, long dispatch, long start, long count)
     requestError(fd, method, "501", "Not Implemented", "My Server does not implement this method");
     return;
   }
-  requestReadhdrs(&rio);
+  requestReadhdrs(rio);
 
   is_static = parseURI(uri, filename, cgiargs);
   if (stat(filename, &sbuf) < 0) {
@@ -219,7 +215,7 @@ void requestHandle(int fd, long arrival, long dispatch, long start, long count)
       return;
     }
     requestServeStatic(fd, filename, sbuf.st_size, arrival, dispatch, start, count);
-  } else {
+   } else {
     if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
       requestError(fd, filename, "403", "Forbidden", "My Server could not run this CGI program");
       return;

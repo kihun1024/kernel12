@@ -106,7 +106,6 @@ void * concur_thread(void * data){
 		clientPrint(clientfd);
 		gettimeofday(&end,NULL);
 		Close(clientfd);
-
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
 		if(first == 0){
