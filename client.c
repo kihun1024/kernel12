@@ -286,10 +286,12 @@ int main(int argc, char *argv[])
   sem_init(&sem_time, 0, 1);
   client(host, port, threadN, forM, schedalg, filename);
 
- printf("req_count : %d\n",req_count);
- printf("req_first_time : %ld\n",req_first_time);
- printf("req_avg_time : %ld\n",req_avg_time/req_count);
- printf("req_last_time : %ld\n",req_last_time);
- printf("throuput : %f\n",(double)req_count /(req_last_time - req_first_time)); 
-  exit(0);
+ if(req_first_time !=0){
+	 printf("req_count : %d\n",req_count);
+	 printf("req_first_time : %ld\n",req_first_time);
+	 printf("req_avg_time : %ld\n",req_avg_time/req_count);
+	 printf("req_last_time : %ld\n",req_last_time);
+ 	printf("throuput : %f\n",(double)req_count /(req_last_time - req_first_time)); 
+ }
+exit(0);
 }
