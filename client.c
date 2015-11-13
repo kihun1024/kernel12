@@ -22,7 +22,10 @@
 //barrier 사용하기위한 전역변수
 pthread_barrier_t barrier;
 sem_t sem_time;
-long  last;
+long  req_avg_time;
+long  req_first_time;
+long  req_last_time;
+int req_count;
 int tcount, modcount = 1;
 typedef struct data_struct{
 	char * host;
@@ -63,14 +66,42 @@ void clientPrint(int fd)
   char buf[MAXBUF];  
   int length = 0;
   int n;
-  
-  Rio_readinitb(&rio, fd);
+  long req_arrival_time;
+  char temp[MAXBUF];
+  char * ptr;
+ Rio_readinitb(&rio, fd);
 
   /* Read and display the HTTP Header */
   n = Rio_readlineb(&rio, buf, MAXBUF);
   while (strcmp(buf, "\r\n") && (n > 0)) {
     printf("Header: %s", buf);
     n = Rio_readlineb(&rio, buf, MAXBUF);
+
+    if(strstr(buf,"Stat-req-arrival") !=NULL){	//server print find arrival
+	sem_wait(&sem_time);
+	req_count++;		//response count ++;
+	strcpy(temp,buf);
+	ptr = strtok(temp,":");
+	ptr = strtok(NULL,":");
+	req_arrival_time = strtol(ptr,NULL,0);	
+	if(req_first_time == 0){
+		req_first_time = req_arrival_time;
+	}
+	sem_post(&sem_time);
+    }
+    else if(strstr(buf,"Stat-req-end") !=NULL){ //server print find endTime
+    	sem_wait(&sem_time);
+	strcpy(temp,buf);
+	ptr = strtok(temp,":");
+	ptr = strtok(NULL,":");
+	req_avg_time += (strtol(ptr,NULL,0) - req_arrival_time );
+	req_last_time = strtol(ptr,NULL,0);
+	printf("Header: throuput : %f\n",(double)req_count/(req_last_time -req_first_time) );
+	sem_post(&sem_time);
+    }
+
+
+
 
     /* If you want to look for certain HTTP tags... */
     if (sscanf(buf, "Content-Length: %d ", &length) == 1) {
@@ -111,9 +142,6 @@ void * concur_thread(void * data){
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
 	
-		sem_wait(&sem_time);
-		last += endTime - startTime;
-		sem_post(&sem_time);
 	}
 }
 
@@ -144,9 +172,6 @@ void * fifo_thread(void *data){
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
 	
-		sem_wait(&sem_time);
-		last += endTime - startTime;
-		sem_post(&sem_time);
 
 		pthread_barrier_wait(&barrier);
 
@@ -175,9 +200,6 @@ void * random_thread(void *data){
 		startTime = ((start.tv_sec)*1000 + start.tv_usec/1000.0) +0.5;
 		endTime = ((end.tv_sec)*1000+end.tv_usec/1000.0) +0.5;
 	
-		sem_wait(&sem_time);
-		last += endTime - startTime;
-		sem_post(&sem_time);
 		sleep((rand() % 5) + 1);
 	}
 }
@@ -264,7 +286,10 @@ int main(int argc, char *argv[])
   sem_init(&sem_time, 0, 1);
   client(host, port, threadN, forM, schedalg, filename);
 
-
-  printf("first : %ld   , last : %ld \n",first,last);
+ printf("req_count : %d\n",req_count);
+ printf("req_first_time : %ld\n",req_first_time);
+ printf("req_avg_time : %ld\n",req_avg_time/req_count);
+ printf("req_last_time : %ld\n",req_last_time);
+ printf("throuput : %f\n",(double)req_count /(req_last_time - req_first_time)); 
   exit(0);
 }

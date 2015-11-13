@@ -61,7 +61,7 @@ void consumer(void * data) {
   sem_post(&sem_req);
 
   gettimeofday(&dispatch, NULL);
-  req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;
+  req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
   requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count);
   Close(req->fd);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
  
   req.count = 0;
   gettimeofday(&arrival, NULL);
-  req.start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;
+  req.start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
  
 
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     gettimeofday(&arrival, NULL);
     req.threads = threads;
     req.fd = connfd;
-    req.arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;
+    req.arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//request time setting
     sem_post(&sem);
     sem_wait(&sem_req);
   }

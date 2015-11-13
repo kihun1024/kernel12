@@ -7,7 +7,6 @@
 
 #define MAX_REQUEST 100000
 
-long completeTotal =0;
 request_struct reqList[MAX_REQUEST];
 int reqListCount =0;
 
@@ -133,8 +132,9 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
   struct timeval beforeread, afterread;
-  int read, complete;
-
+  int  read, complete;
+  long after_read_time;
+  
   gettimeofday(&beforeread, NULL);
 
   requestGetFiletype(filename, filetype);
@@ -145,22 +145,20 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   Close(srcfd);
 
   gettimeofday(&afterread, NULL);
-
+  after_read_time = (afterread.tv_sec * 1000 + afterread.tv_usec/1000.5) + 0.5;
   read = ((afterread.tv_sec - beforeread.tv_sec) * 1000 + (afterread.tv_usec - beforeread.tv_usec)/1000.0) + 0.5;
   complete = (((afterread.tv_sec) * 1000 + (afterread.tv_usec)/1000.0) + 0.5) - arrival;
-  completeTotal += complete;
   // put together response
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: My Web Server\r\n", buf);
  
-  reqList[reqListCount].throughput = (double)(count+1)/completeTotal;
   reqList[reqListCount].stat_req_arrival_count = count;
   reqList[reqListCount].stat_req_arrival_time = arrival - start;
   reqList[reqListCount].stat_req_complete_time = dispatch + complete - start;
 
   // Your statistics go here -- fill in the 0's with something useful!
-  sprintf(buf, "%sStat-req-arrival: %ld\r\n", buf, arrival);
-  sprintf(buf, "%sthroughput: %lf\r\n", buf, reqList[reqListCount].throughput);
+  sprintf(buf, "%sStat-req-arrival:%ld\r\n", buf, arrival);
+  sprintf(buf, "%sStat-req-end:%ld\r\n",buf,after_read_time);
   sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_count);
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_time);
   sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time);
