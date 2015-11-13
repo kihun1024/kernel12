@@ -15,13 +15,23 @@ double spinfor = 5.0;
 void getargs()
 {
   char *buf, *p;
+  int add = 0, mod = 0, t = 1;
 
   /* Extract the four arguments */
   if ((buf = getenv("QUERY_STRING")) != NULL) {
     p = strtok(buf, "&");
-    if (p == NULL) 
-      return;
-    spinfor = (double) atoi(p);
+    while(p)
+    {
+      t = atoi(p);
+      if(add == 0)
+        add = atoi(p);
+      else if (mod == 0)
+        mod = atoi(p);
+      
+      p = strtok(NULL, "&");
+    }
+    if(t == 0)
+      spinfor = rand() % mod + add;
     return;
   }
 }
@@ -37,6 +47,9 @@ double Time_GetSeconds() {
 int main(int argc, char *argv[])
 {
   char content[MAXBUF];
+  struct timeval t;
+  gettimeofday(&t, NULL);
+  srand(t.tv_usec);
 
   getargs();
 
