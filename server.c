@@ -83,13 +83,11 @@ int main(int argc, char *argv[])
   req.count = 0;
   gettimeofday(&arrival, NULL);
   req.start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
- 
 
-
-//  thread 생성
   sem_init(&sem,0,0);
   sem_init(&sem_req,0,0);
 
+//  thread 생성
   for(i = 0 ; i < threads ;i++){
     thread = (pthread_t*)malloc(sizeof(pthread_t));
     pthread_create(thread,NULL,consumer,(void*)&req);

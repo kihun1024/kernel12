@@ -145,7 +145,7 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   Close(srcfd);
 
   gettimeofday(&afterread, NULL);
-  after_read_time = (afterread.tv_sec * 1000 + afterread.tv_usec/1000.5) + 0.5;
+  after_read_time = (afterread.tv_sec * 1000 + afterread.tv_usec/1000.0) + 0.5;
   read = ((afterread.tv_sec - beforeread.tv_sec) * 1000 + (afterread.tv_usec - beforeread.tv_usec)/1000.0) + 0.5;
   complete = (((afterread.tv_sec) * 1000 + (afterread.tv_usec)/1000.0) + 0.5) - arrival;
   // put together response
