@@ -21,8 +21,8 @@ typedef struct {
 
 enum {FIFO, HPSC, HPDC};
 
-sem_t sem;
-sem_t sem_req;
+sem_t empty;
+sem_t full;
 request **buffer;
 
 void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *argv[])
@@ -38,33 +38,25 @@ void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *ar
 }
 
 
-void consumer(void * data) {
-  request * req ,*reqTemp;
-  int inum;
+void *consumer(void * data) {
+  request * req ;
   struct timeval dispatch;
-
+  int fdTemp;
   
   while(1){
 //  printf("wait consumer\n");
 
   //request wait;
-  sem_wait(&sem);
-  
-  //struct req setting 설정
-  reqTemp = (request * )data;
-  req = (request*)malloc(sizeof(request));
-  req->fd = reqTemp->fd;
-  req->size = reqTemp->size;
-  req->start = reqTemp->start;
-  req->count = reqTemp->count++;
-  req->arrival = reqTemp->arrival;
-  sem_post(&sem_req);
+  sem_wait(&full);
+  req = (request * )data;
+  fdTemp = req->fd;
+  sem_post(&empty);
 
   gettimeofday(&dispatch, NULL);
   req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
-  requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count);
-  Close(req->fd);
+  requestHandle(fdTemp, req->arrival, req->dispatch, req->start, req->count++);
+  Close(fdTemp);
   }
 }
 
@@ -78,33 +70,33 @@ int main(int argc, char *argv[])
   pthread_t * thread;
   getargs(&port, &threads, &buffers, &alg, argc, argv);
 
+
+  //  thread 생성
+  sem_init(&empty,0,1);
+  sem_init(&full,0,0);
+
+  for(i = 0 ; i < threads ;i++){
+    thread = (pthread_t*)malloc(sizeof(pthread_t));
+    pthread_create(thread,NULL,&consumer,(void*)&req);
+    pthread_detach(*thread);
+  }
+
+
   listenfd = Open_listenfd(port);
  
   req.count = 0;
   gettimeofday(&arrival, NULL);
   req.start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
-
-  sem_init(&sem,0,0);
-  sem_init(&sem_req,0,0);
-
-//  thread 생성
-  for(i = 0 ; i < threads ;i++){
-    thread = (pthread_t*)malloc(sizeof(pthread_t));
-    pthread_create(thread,NULL,consumer,(void*)&req);
-    pthread_detach(thread);
-  }
-
-
-
+ 
    while (1) {
     clientlen = sizeof(clientaddr);
+    sem_wait(&empty);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
     gettimeofday(&arrival, NULL);
     req.threads = threads;
     req.fd = connfd;
     req.arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//request time setting
-    sem_post(&sem);
-    sem_wait(&sem_req);
+    sem_post(&full);
   }
 }
 
