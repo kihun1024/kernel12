@@ -40,7 +40,7 @@ void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *ar
 
 
 void *consumer(void * data) {
-  request * req ;
+  request req ;
   struct timeval dispatch;
   
   while(1){
@@ -48,14 +48,19 @@ void *consumer(void * data) {
 
   //request wait;
   sem_wait(&full);
-  req = buffer[0];
+  req.fd = buffer[0]->fd;
+  req.count = buffer[0]->count;
+  req.arrival = buffer[0]->arrival;
   sem_post(&empty);
 
-  gettimeofday(&dispatch, NULL);
-  req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
+  req.threads = buffer[0]->threads;
+  req.start = buffer[0]->start;
 
-  requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count);
-  Close(req->fd);
+  gettimeofday(&dispatch, NULL);
+  req.dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
+
+  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count);
+  Close(req.fd);
   }
 }
 
@@ -86,19 +91,18 @@ int main(int argc, char *argv[])
  
   gettimeofday(&arrival, NULL);
   start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
- 
+  buffer[0] = (request*)malloc(sizeof(request));
+  buffer[0]->threads = threads;
+  buffer[0]->start = start; 
    while (1) {
     clientlen = sizeof(clientaddr);
     sem_wait(&empty);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
  
     gettimeofday(&arrival, NULL);
-    buffer[0] = (request*)malloc(sizeof(request));
-    buffer[0]->threads = threads;
     buffer[0]->fd = connfd;
     buffer[0]->arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//request time setting
     buffer[0]->count = count++;
-    buffer[0]->start = start; 
    sem_post(&full);
   }
 }
