@@ -25,6 +25,7 @@ sem_t empty;
 sem_t full;
 request **buffer;
 
+
 void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *argv[])
 {
   if (argc != 3) { /* You will change 2 to 5 */
@@ -41,22 +42,20 @@ void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *ar
 void *consumer(void * data) {
   request * req ;
   struct timeval dispatch;
-  int fdTemp;
   
   while(1){
 //  printf("wait consumer\n");
 
   //request wait;
   sem_wait(&full);
-  req = (request * )data;
-  fdTemp = req->fd;
+  req = buffer[0];
   sem_post(&empty);
 
   gettimeofday(&dispatch, NULL);
   req->dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
-  requestHandle(fdTemp, req->arrival, req->dispatch, req->start, req->count++);
-  Close(fdTemp);
+  requestHandle(req->fd, req->arrival, req->dispatch, req->start, req->count);
+  Close(req->fd);
   }
 }
 
@@ -66,37 +65,41 @@ int main(int argc, char *argv[])
   int listenfd, connfd, port, threads, buffers, alg, clientlen;
   struct sockaddr_in clientaddr;
   struct timeval arrival;
-  request req;
+  long count = 0,start;
   pthread_t * thread;
   getargs(&port, &threads, &buffers, &alg, argc, argv);
-
-
+  
+  buffer = (request**)malloc(sizeof(request*)*1);
+  
   //  thread 생성
   sem_init(&empty,0,1);
   sem_init(&full,0,0);
 
   for(i = 0 ; i < threads ;i++){
     thread = (pthread_t*)malloc(sizeof(pthread_t));
-    pthread_create(thread,NULL,&consumer,(void*)&req);
+    pthread_create(thread,NULL,&consumer,NULL);
     pthread_detach(*thread);
   }
 
 
   listenfd = Open_listenfd(port);
  
-  req.count = 0;
   gettimeofday(&arrival, NULL);
-  req.start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
+  start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
  
    while (1) {
     clientlen = sizeof(clientaddr);
     sem_wait(&empty);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+ 
     gettimeofday(&arrival, NULL);
-    req.threads = threads;
-    req.fd = connfd;
-    req.arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//request time setting
-    sem_post(&full);
+    buffer[0] = (request*)malloc(sizeof(request));
+    buffer[0]->threads = threads;
+    buffer[0]->fd = connfd;
+    buffer[0]->arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//request time setting
+    buffer[0]->count = count++;
+    buffer[0]->start = start; 
+   sem_post(&full);
   }
 }
 
