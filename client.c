@@ -26,7 +26,7 @@ long  req_avg_time;
 long  req_first_time;
 long  req_last_time;
 int req_count;
-int tcount, modcount = 1;
+int modcount = 1;
 typedef struct data_struct{
 	char * host;
 	int port;
@@ -128,7 +128,7 @@ void * concur_thread(void * data){
 		//barrier_wait 스레드 다 생성 될때까지 대기
 		res = pthread_barrier_wait(&barrier);
 		clientfd = Open_clientfd(ds->host,ds->port);
-		clientSend(clientfd,ds->filename[tcount++%modcount]);
+		clientSend(clientfd,ds->filename[i%modcount]);
 		clientPrint(clientfd);
 		Close(clientfd);
 	}
@@ -143,7 +143,7 @@ void * fifo_thread(void *data){
 		//세마폴 사용 부분 fd 생성 및 요청 부분
 		sem_wait(&semList[ds->iNumber]);
 		clientfd = Open_clientfd(ds->host,ds->port);
-		clientSend(clientfd,ds->filename[tcount++%modcount]);
+		clientSend(clientfd,ds->filename[i%modcount]);
 		sem_post(&semList[((ds->iNumber)+1)%ds->n]);
 		
 		// 요청에의한 응답부분 
@@ -163,7 +163,7 @@ void * random_thread(void *data){
 	for(i=0; i<ds->m; i++)
 	{
 		clientfd = Open_clientfd(ds->host,ds->port);
-		clientSend(clientfd,ds->filename[tcount++%modcount]);
+		clientSend(clientfd,ds->filename[i%modcount]);
 		clientPrint(clientfd);
 		Close(clientfd);
 		sleep((rand() % 5) + 1);

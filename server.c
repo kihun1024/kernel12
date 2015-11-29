@@ -18,7 +18,6 @@ typedef struct {
   int fd;
   long size, arrival, dispatch;
   long start, count;
-  int threads;
   int priority;
 } request;
 
@@ -60,50 +59,26 @@ void enqueue(request * req , int alg){
 
 	if(alg == FIFO){
 		req->priority = (int)req->count;
-		i = ++heapSize;
-		while((i!=1) && req->priority < buffer[i/2]->priority){
-			buffer[i] = buffer[i/2];
-			i = i/2;
-		}
-		buffer[i] = req;
-		printf("enqueue : %s\n",uri);
-
 	}else if(alg == HPSC){
 		if(strstr(uri,".cgi") ==NULL){
-			//req->priority = (-1*bufferSize) + (req->count % bufferSize) +((-1)*(bufferSize)* (req->count/bufferSize));
 			req->priority = 1;
 		}else{
 			req->priority  = 2;
-			//req->priority = req->count  % bufferSize + ((bufferSize)* (req->count / bufferSize));
 		}
-		
-		i = ++heapSize;
-		while((i!=1) && req->priority < buffer[i/2]->priority){
-			buffer[i] = buffer[i/2];
-			i = i/2;
-		}
-		buffer[i] = req;
-		printf("enqueue : %s  \n",uri);
-//		for(i = 1 ; i <= heapSize;i++){		
-//			printf("buffer[%d] = %d,count : %ld\n",i,buffer[i]->priority,buffer[i]->count);
-//		}
 	}else if(alg == HPDC){
 		if(strstr(uri,".cgi") !=NULL){
 			req->priority = 1;
 		}else{
 			req->priority = 2;
 		}
-		
-		i = ++heapSize;
-		while((i!=1) && req->priority < buffer[i/2]->priority){
-			buffer[i] = buffer[i/2];
-			i = i/2;
-		}
-		buffer[i] = req;
-		printf("enqueue : %s\n",uri);
-
-
 	}
+	i = ++heapSize;
+	while ((i != 1) && req->priority < buffer[i / 2]->priority) {
+		buffer[i] = buffer[i / 2];
+		i = i / 2;
+	}
+	buffer[i] = req;
+	printf("enqueue : %s\n", uri);
 }
 
 request dequeue(int alg){
@@ -186,13 +161,12 @@ void *consumer(void * data) {
 //  printf("req count = %ld\n",req.count);
   sem_post(&empty);
 
-  //req.threads = buffer[0]->threads;
   //req.start = buffer[0]->start;
 
   gettimeofday(&dispatch, NULL);
   req.dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
-  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count);
+  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count, data);
   Close(req.fd);
   }
 }
@@ -220,7 +194,7 @@ int main(int argc, char *argv[])
 
   for(i = 0 ; i < threads ;i++){
     thread = (pthread_t*)malloc(sizeof(pthread_t));
-    pthread_create(thread,NULL,&consumer,(void*)alg);
+    pthread_create(thread,NULL,&consumer,i);
     pthread_detach(*thread);
   }
 
@@ -237,7 +211,6 @@ int main(int argc, char *argv[])
     gettimeofday(&arrival, NULL);
     pthread_mutex_lock(&mutex);
     req = (request*)malloc(sizeof(request));
-    req->threads = threads;
     req->start = start; 
     req->fd = connfd;
     req->arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//request time setting
@@ -248,9 +221,3 @@ int main(int argc, char *argv[])
    sem_post(&full);
   }
 }
-
-
-    
-
-
- 
