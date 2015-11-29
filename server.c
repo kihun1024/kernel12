@@ -29,11 +29,10 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 request **buffer;
 int heapSize;
 int bufferSize;
-int alg;
 
 void getargs(int *port, int *threads, int *buffers, int *alg,int argc, char *argv[])
 {
-  if (argc != 5) { /* You will change 2 to 5 */
+  if (argc != 5) {
     fprintf(stderr, "Usage: %s <port> <P> <Q> <Sched-alg>\n", argv[0]);
     exit(1);
   }
@@ -57,21 +56,13 @@ void enqueue(request * req , int alg){
 	recv(req->fd,buf,MAXLINE,MSG_PEEK);
 	sscanf(buf,"%s %s %s",method,uri,version);
 
-
-	if(alg == FIFO){
-		req->priority = (int)req->count;
-	}else if(alg == HPSC){
-		if(strstr(uri,".cgi") ==NULL){
-			req->priority = 1;
-		}else{
-			req->priority  = 2;
-		}
+	req->priority = (int)req->count;
+	if(alg == HPSC){
+		if(strstr(uri,".cgi") != NULL)
+			req->priority += 10000;
 	}else if(alg == HPDC){
-		if(strstr(uri,".cgi") !=NULL){
-			req->priority = 1;
-		}else{
-			req->priority = 2;
-		}
+		if(strstr(uri,".cgi") == NULL)
+			req->priority += 10000;
 	}
 	i = ++heapSize;
 	while ((i != 1) && req->priority < buffer[i / 2]->priority) {
@@ -79,93 +70,47 @@ void enqueue(request * req , int alg){
 		i = i / 2;
 	}
 	buffer[i] = req;
-	printf("enqueue : %s\n", uri);
 }
 
-request dequeue(int alg){
+request dequeue(){
 	request * req , * reqTemp;
-	int parent , child,i;
-	if(alg == FIFO){
-		req = buffer[1];
-		reqTemp = buffer[heapSize--];
+	int parent, child;
+	req = buffer[1];
+	reqTemp = buffer[heapSize--];
 		
-		parent = 1;
-		child = 2;
+	parent = 1;
+	child = 2;
 
-		while(child <= heapSize){
-			if((child < heapSize) && (buffer[child]->priority >buffer[child+1]->priority)){
-				child++;
-			}  
-			if(reqTemp->priority <= buffer[child]->priority){
-				break;
-			}
-			
-
-			buffer[parent] = buffer[child];
-			parent = child;
-			child *=2;
-		}
-		buffer[parent] = reqTemp;
-		printf("deque : count : %ld\n",req->count);
-		return *req;
-	}else if( alg == HPSC){
-		req = buffer[1];
-		reqTemp = buffer[heapSize--];
+	while(child <= heapSize)
+	{
+		if((child < heapSize) && (buffer[child]->priority >buffer[child+1]->priority))
+			child++;
+		if(reqTemp->priority <= buffer[child]->priority)
+			break;
 		
-		parent = 1;
-		child = 2;
-
-		while(child <= heapSize){
-			if((child < heapSize) && (buffer[child]->priority > buffer[child+1]->priority)){
-		//		if((buffer[child]->count > buffer[child+1]) &&buffer[child]){
-					child++;
-		//			printf("child++\n");
-		//		}
-			}  
-			if(reqTemp->priority <= buffer[child]->priority){
-		//		if(reqTemp->count < buffer[child]->count){
-					break;
-		//		}
-		//		printf("check/.\n");
-			}
-			buffer[parent] = buffer[child];
-			parent = child;
-			child *=2;
-		}
-		buffer[parent] = reqTemp;
-		printf("dequeue : count : %ld\n",req->count);
-	//	for(i = 1 ; i <= heapSize;i++){		
-	//		printf("buffer[%d] = %d,count : %ld\n",i,buffer[i]->priority,buffer[i]->count);
-	//	}
-		return *req;
-
-
-	}else if( alg == HPDC){
-	
+		buffer[parent] = buffer[child];
+		parent = child;
+		child *=2;
 	}
-
+	buffer[parent] = reqTemp;
+	return *req;
 }
 void *consumer(void * data) {
   request req ;
   struct timeval dispatch;
   while(1){
-//  printf("wait consumer\n");
-
   //request wait;
   sem_wait(&full);
   
   pthread_mutex_lock(&mutex);
-  req = dequeue(alg);
+  req = dequeue();
   pthread_mutex_unlock(&mutex);
-//  printf("req count = %ld\n",req.count);
   sem_post(&empty);
-
-  //req.start = buffer[0]->start;
 
   gettimeofday(&dispatch, NULL);
   req.dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
-  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count, data);
+  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count, (int)data);
   Close(req.fd);
   }
 }
@@ -174,11 +119,10 @@ void *consumer(void * data) {
 int main(int argc, char *argv[])
 {
   int i;
-  int listenfd, connfd, port, threads, buffers, clientlen; //alg
+  int listenfd, connfd, port, threads, buffers, alg, clientlen;
   struct sockaddr_in clientaddr;
   struct timeval arrival;
   long count = 0,start;
-  char * sched ;
   pthread_t * thread;
   request * req;
   heapSize = 0;
@@ -193,7 +137,7 @@ int main(int argc, char *argv[])
 
   for(i = 0 ; i < threads ;i++){
     thread = (pthread_t*)malloc(sizeof(pthread_t));
-    pthread_create(thread,NULL,&consumer,i);
+    pthread_create(thread,NULL,&consumer,(void *)i);
     pthread_detach(*thread);
   }
 

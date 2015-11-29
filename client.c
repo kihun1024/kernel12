@@ -25,6 +25,8 @@ sem_t sem_time;
 long  req_avg_time;
 long  req_first_time;
 long  req_last_time;
+long  req_wait_time_s;
+long  req_wait_time_d;
 int req_count;
 int modcount = 1;
 typedef struct data_struct{
@@ -96,7 +98,23 @@ void clientPrint(int fd)
 	ptr = strtok(NULL,":");
 	req_avg_time += (strtol(ptr,NULL,0) - req_arrival_time );
 	req_last_time = strtol(ptr,NULL,0);
+	sem_post(&sem_time);
 	printf("Header: throughput : %lf\n",(double)req_count/(req_last_time - req_first_time));
+    }
+    else if(strstr(buf,"Stat_wait_time_S") !=NULL){ //server print find waitTime
+    	sem_wait(&sem_time);
+	strcpy(temp,buf);
+	ptr = strtok(temp,":");
+	ptr = strtok(NULL,":");
+	req_wait_time_s += strtol(ptr,NULL,0);
+	sem_post(&sem_time);
+    }
+    else if(strstr(buf,"Stat_wait_time_D") !=NULL){ //server print find waitTime
+    	sem_wait(&sem_time);
+	strcpy(temp,buf);
+	ptr = strtok(temp,":");
+	ptr = strtok(NULL,":");
+	req_wait_time_d += strtol(ptr,NULL,0);
 	sem_post(&sem_time);
     }
 
@@ -118,7 +136,6 @@ void clientPrint(int fd)
 
 /* CONCUR 방법 스레드 함수*/
 void * concur_thread(void * data){
-	int res;
 	int clientfd;
 	int i;
 	data_struct *ds = (data_struct*)data;
@@ -126,7 +143,7 @@ void * concur_thread(void * data){
 	for(i=0; i<ds->m; i++)
 	{
 		//barrier_wait 스레드 다 생성 될때까지 대기
-		res = pthread_barrier_wait(&barrier);
+		pthread_barrier_wait(&barrier);
 		clientfd = Open_clientfd(ds->host,ds->port);
 		clientSend(clientfd,ds->filename[i%modcount]);
 		clientPrint(clientfd);
@@ -257,6 +274,8 @@ int main(int argc, char *argv[])
 	 printf("req_first_time : %ld\n",req_first_time);
 	 printf("req_avg_time : %lf\n",(double)req_avg_time/req_count);
 	 printf("req_last_time : %ld\n",req_last_time);
+	 printf("req_wait_time_d : %lf\n",(double)req_wait_time_d/(req_count/2));
+	 printf("req_wait_time_s : %lf\n",(double)req_wait_time_s/(req_count/2));
  	printf("throughput : %lf\n",(double)req_count /(req_last_time - req_first_time)); 
  }
 exit(0);

@@ -112,12 +112,14 @@ void requestGetFiletype(char *filename, char *filetype)
 //
 void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, long dispatch, long start, long count, int id)
 {
-  struct timeval beforeread, afterread;
+  struct timeval afterread;
   char buf[MAXLINE];
   int complete;
   long after_read_time;
 
   gettimeofday(&afterread, NULL);
+  after_read_time = (afterread.tv_sec * 1000 + afterread.tv_usec/1000.0) + 0.5;
+  complete = (((afterread.tv_sec) * 1000 + (afterread.tv_usec)/1000.0) + 0.5) - arrival;
 
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: My Web Server\r\n", buf);
@@ -125,12 +127,15 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, lo
   reqList[reqListCount].stat_req_arrival_count = count;
   reqList[reqListCount].stat_req_arrival_time = arrival - start;
   reqList[reqListCount].stat_req_complete_time = dispatch + complete - start;
-/*
+
+  sprintf(buf, "%sStat-req-arrival:%ld\r\n", buf, arrival);
+  sprintf(buf, "%sStat-req-end:%ld\r\n",buf,after_read_time);
+  sprintf(buf, "%sStat_wait_time_D: %ld\r\n",buf,dispatch - arrival);
   sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_count);
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_time);
-  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time); */
+  sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time);
   sprintf(buf, "%sStat_req_dispatch_time: %ld\r\n",buf, dispatch - start);
-  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf,count);
+  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf, reqListCount);
   sprintf(buf, "%sStat_thread_id: %d\r\n",buf,id);
   sprintf(buf, "%sStat_thread_static: %d\r\n",buf,c_static[id]);
   sprintf(buf, "%sStat_thread_dynamic: %d\r\n",buf,++c_dynamic[id]);
@@ -177,14 +182,15 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   reqList[reqListCount].stat_req_complete_time = dispatch + complete - start;
 
   // Your statistics go here -- fill in the 0's with something useful!
-  sprintf(buf, "%sStat_req-arrival:%ld\r\n", buf, arrival);
-  sprintf(buf, "%sStat_req-end:%ld\r\n",buf,after_read_time);
+  sprintf(buf, "%sStat-req-arrival:%ld\r\n", buf, arrival);
+  sprintf(buf, "%sStat-req-end:%ld\r\n",buf,after_read_time);
+  sprintf(buf, "%sStat_wait_time_S: %ld\r\n",buf,dispatch - arrival);
   sprintf(buf, "%sStat_req_arrival_count: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_count);
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_time);
   sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time);
   sprintf(buf, "%sStat_req_dispatch_time: %ld\r\n",buf, dispatch - start);
   // req_complete_count? req_arrival_count?
-  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf,reqList[reqListCount].stat_req_arrival_count);
+  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf,reqListCount);
   sprintf(buf, "%sStat_thread_id: %d\r\n",buf,id);
   sprintf(buf, "%sStat_thread_static: %d\r\n",buf,++c_static[id]);
   sprintf(buf, "%sStat_thread_dynamic: %d\r\n",buf,c_dynamic[id]);
@@ -218,10 +224,10 @@ void requestHandle(int fd, long arrival, long dispatch, long start, long count, 
   rio = (rio_t*)malloc(sizeof(rio_t));
   Rio_readinitb(rio, fd);
   Rio_readlineb(rio, buf, MAXLINE);
-   printf("handle in... %s\n ",buf);
+//   printf("handle in... %s\n ",buf);
  sscanf(buf, "%s %s %s", method, uri, version);
 
-  printf("%ld %s %s %s\n", count, method, uri, version);
+  printf("%ld %s %s %s\n", count + 1, method, uri, version);
 
   if (strcasecmp(method, "GET")) {
     requestError(fd, method, "501", "Not Implemented", "My Server does not implement this method");
