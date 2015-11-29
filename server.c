@@ -29,6 +29,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 request **buffer;
 int heapSize;
 int bufferSize;
+int alg;
 
 void getargs(int *port, int *threads, int *buffers, int *alg,int argc, char *argv[])
 {
@@ -147,8 +148,6 @@ request dequeue(int alg){
 void *consumer(void * data) {
   request req ;
   struct timeval dispatch;
-  int alg;
-  alg = (int)data;
   while(1){
 //  printf("wait consumer\n");
 
@@ -175,7 +174,7 @@ void *consumer(void * data) {
 int main(int argc, char *argv[])
 {
   int i;
-  int listenfd, connfd, port, threads, buffers, alg, clientlen;
+  int listenfd, connfd, port, threads, buffers, clientlen; //alg
   struct sockaddr_in clientaddr;
   struct timeval arrival;
   long count = 0,start;
