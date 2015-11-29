@@ -16,7 +16,6 @@ typedef struct {
   int fd;
   long size, arrival, dispatch;
   long start, count;
-  int threads;
 } request;
 
 enum {FIFO, HPSC, HPDC};
@@ -28,13 +27,13 @@ request **buffer;
 
 void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *argv[])
 {
-  if (argc != 3) { /* You will change 2 to 5 */
+  if (argc != 5) { /* You will change 2 to 5 */
     fprintf(stderr, "Usage: %s <port> <P>\n", argv[0]);
     exit(1);
   }
   *port = atoi(argv[1]);
   *threads = atoi(argv[2]);
-  *buffers = 1;
+  *buffers = atoi(argv[3]);
   *alg = FIFO;
 }
 
@@ -42,10 +41,7 @@ void getargs(int *port, int *threads, int *buffers, int *alg, int argc, char *ar
 void *consumer(void * data) {
   request req ;
   struct timeval dispatch;
-  
   while(1){
-//  printf("wait consumer\n");
-
   //request wait;
   sem_wait(&full);
   req.fd = buffer[0]->fd;
@@ -53,13 +49,12 @@ void *consumer(void * data) {
   req.arrival = buffer[0]->arrival;
   sem_post(&empty);
 
-  req.threads = buffer[0]->threads;
   req.start = buffer[0]->start;
 
   gettimeofday(&dispatch, NULL);
   req.dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
-  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count);
+  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count, data);
   Close(req.fd);
   }
 }
@@ -74,25 +69,25 @@ int main(int argc, char *argv[])
   pthread_t * thread;
   getargs(&port, &threads, &buffers, &alg, argc, argv);
   
-  buffer = (request**)malloc(sizeof(request*)*1);
-  
+  buffer = (request**)malloc(sizeof(request*)*buffers);
+  for(i = 0 ; i < buffers; i++){
+    buffer[i] = (request*)malloc(sizeof(request));
+  }
+
   //  thread 생성
   sem_init(&empty,0,1);
   sem_init(&full,0,0);
 
   for(i = 0 ; i < threads ;i++){
     thread = (pthread_t*)malloc(sizeof(pthread_t));
-    pthread_create(thread,NULL,&consumer,NULL);
+    pthread_create(thread,NULL,&consumer,i);
     pthread_detach(*thread);
   }
 
 
   listenfd = Open_listenfd(port);
- 
   gettimeofday(&arrival, NULL);
   start = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;	//server start time setting
-  buffer[0] = (request*)malloc(sizeof(request));
-  buffer[0]->threads = threads;
   buffer[0]->start = start; 
    while (1) {
     clientlen = sizeof(clientaddr);
