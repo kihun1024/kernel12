@@ -11,6 +11,6 @@ typedef struct {
 	double throughput;
 }request_struct;
 
-void requestHandle(int fd, long arrival, long dispatch, long start, long count, char * method, char * uri , char * version, rio_t *rio);
+void requestHandle(int fd, long arrival, long dispatch, long start, long count);
 
 #endif

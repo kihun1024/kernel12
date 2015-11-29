@@ -2,6 +2,8 @@
 #include "request.h"
 #include <pthread.h>
 #include <semaphore.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 // 
 // server.c: A very, very simple web server
 //
@@ -18,8 +20,6 @@ typedef struct {
   long start, count;
   int threads;
   int priority;
-  char method[MAXLINE], uri[MAXLINE] , version[MAXLINE];
-  rio_t * rio;
 } request;
 
 enum {FIFO, HPSC, HPDC};
@@ -54,10 +54,8 @@ void enqueue(request * req , int alg){
 	int i;
 	char buf[MAXLINE],method[MAXLINE],uri[MAXLINE],version[MAXLINE];
 	
-	req->rio =  (rio_t*)malloc(sizeof(rio_t));
-	Rio_readinitb(req->rio,req->fd);
-	Rio_readlineb(req->rio,buf,MAXLINE);
-	sscanf(buf,"%s %s %s",req->method,req->uri,req->version);
+	recv(req->fd,buf,MAXLINE,MSG_PEEK);
+	sscanf(buf,"%s %s %s",method,uri,version);
 
 
 	if(alg == FIFO){
@@ -68,10 +66,10 @@ void enqueue(request * req , int alg){
 			i = i/2;
 		}
 		buffer[i] = req;
-		printf("enqueue : %s\n",req->uri);
+		printf("enqueue : %s\n",uri);
 
 	}else if(alg == HPSC){
-		if(strstr(req->uri,".cgi") ==NULL){
+		if(strstr(uri,".cgi") ==NULL){
 			//req->priority = (-1*bufferSize) + (req->count % bufferSize) +((-1)*(bufferSize)* (req->count/bufferSize));
 			req->priority = 1;
 		}else{
@@ -85,12 +83,12 @@ void enqueue(request * req , int alg){
 			i = i/2;
 		}
 		buffer[i] = req;
-		printf("enqueue : %s  \n",req->uri);
+		printf("enqueue : %s  \n",uri);
 //		for(i = 1 ; i <= heapSize;i++){		
 //			printf("buffer[%d] = %d,count : %ld\n",i,buffer[i]->priority,buffer[i]->count);
 //		}
 	}else if(alg == HPDC){
-		if(strstr(req->uri,".cgi") !=NULL){
+		if(strstr(uri,".cgi") !=NULL){
 			req->priority = 1;
 		}else{
 			req->priority = 2;
@@ -102,7 +100,7 @@ void enqueue(request * req , int alg){
 			i = i/2;
 		}
 		buffer[i] = req;
-		printf("enqueue : %s\n",req->uri);
+		printf("enqueue : %s\n",uri);
 
 
 	}
@@ -132,7 +130,7 @@ request dequeue(int alg){
 			child *=2;
 		}
 		buffer[parent] = reqTemp;
-		printf("deque : %s     count : %ld\n",req->uri,req->count);
+		printf("deque : count : %ld\n",req->count);
 		return *req;
 	}else if( alg == HPSC){
 		req = buffer[1];
@@ -159,7 +157,7 @@ request dequeue(int alg){
 			child *=2;
 		}
 		buffer[parent] = reqTemp;
-		printf("dequeue : %s     count : %ld\n",req->uri,req->count);
+		printf("dequeue : count : %ld\n",req->count);
 	//	for(i = 1 ; i <= heapSize;i++){		
 	//		printf("buffer[%d] = %d,count : %ld\n",i,buffer[i]->priority,buffer[i]->count);
 	//	}
@@ -194,7 +192,7 @@ void *consumer(void * data) {
   gettimeofday(&dispatch, NULL);
   req.dispatch = ((dispatch.tv_sec) * 1000 + dispatch.tv_usec/1000.0) + 0.5;	// dispatch time Setting
 
-  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count,req.method,req.uri,req.version,req.rio);
+  requestHandle(req.fd, req.arrival, req.dispatch, req.start, req.count);
   Close(req.fd);
   }
 }

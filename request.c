@@ -180,18 +180,19 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
 }
 
 // handle a request
-void requestHandle(int fd, long arrival, long dispatch, long start, long count, char * method , char * uri , char * version, rio_t * rio)
+void requestHandle(int fd, long arrival, long dispatch, long start, long count)
 {
 
   int is_static;
   struct stat sbuf;
-  //char buf[MAXLINE];//, method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+  char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
   char filename[MAXLINE], cgiargs[MAXLINE];
-  //rio_t * rio;
-  //rio = (rio_t*)malloc(sizeof(rio_t));
-  //Rio_readinitb(rio, fd);
-  //Rio_readlineb(rio, buf, MAXLINE);
-  //sscanf(buf, "%s %s %s", method, uri, version);
+  rio_t * rio;
+  rio = (rio_t*)malloc(sizeof(rio_t));
+  Rio_readinitb(rio, fd);
+  Rio_readlineb(rio, buf, MAXLINE);
+   printf("handle in... %s\n ",buf);
+ sscanf(buf, "%s %s %s", method, uri, version);
 
   printf("%s %s %s\n", method, uri, version);
 
