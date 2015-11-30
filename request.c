@@ -135,7 +135,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, lo
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_time);
   sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time);
   sprintf(buf, "%sStat_req_dispatch_time: %ld\r\n",buf, dispatch - start);
-  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf, reqListCount);
+  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf, reqListCount++);
   sprintf(buf, "%sStat_thread_id: %d\r\n",buf,id);
   sprintf(buf, "%sStat_thread_static: %d\r\n",buf,c_static[id]);
   sprintf(buf, "%sStat_thread_dynamic: %d\r\n",buf,++c_dynamic[id]);
@@ -189,14 +189,10 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
   sprintf(buf, "%sStat_req_arrival_time: %ld\r\n", buf, reqList[reqListCount].stat_req_arrival_time);
   sprintf(buf, "%sStat_req_complete_time: %ld\r\n", buf, reqList[reqListCount].stat_req_complete_time);
   sprintf(buf, "%sStat_req_dispatch_time: %ld\r\n",buf, dispatch - start);
-  // req_complete_count? req_arrival_count?
-  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf,reqListCount);
+  sprintf(buf, "%sStat_req_complete_count: %ld\r\n",buf,reqListCount++);
   sprintf(buf, "%sStat_thread_id: %d\r\n",buf,id);
   sprintf(buf, "%sStat_thread_static: %d\r\n",buf,++c_static[id]);
   sprintf(buf, "%sStat_thread_dynamic: %d\r\n",buf,c_dynamic[id]);
-
-  reqListCount++;
-
 
   // Add additional statistic information here like above
   // ...
